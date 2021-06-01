@@ -10,18 +10,19 @@
  */
 
 apply plugin: 'maven'
+apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
 if (project.hasProperty("doSigning")) {
     signing {
-        sign shadowJar
+        sign jar
         sign sourceJar
         sign javadocJar
     }
     artifacts {
-        shadow signShadowJar.signatures
-        shadow signSourceJar.signatures
-        shadow signJavadocJar.signatures
+        signJar.signatures
+        signSourceJar.signatures
+        signJavadocJar.signatures
     }
 
     // Default the secretKeyRingFile to the current user's home
@@ -31,8 +32,7 @@ if (project.hasProperty("doSigning")) {
     }
 }
 
-uploadArchives.enabled = false
-uploadShadow {
+uploadArchives{
     repositories {
         mavenDeployer {
             // Only configure publishing if a URL was provided
@@ -61,12 +61,18 @@ uploadShadow {
                     }
                 }
             }
+
+            addFilter('sources') {artifact, file ->
+                artifact.name == 'sources'
+            }
+            addFilter('tests') {artifact, file ->
+                artifact.name == 'tests'
+            }
+            addFilter('javadoc') {artifact, file ->
+                artifact.name == 'javadoc'
+            }
         }
     }
-}
-
-task publishToRepo(dependsOn: uploadShadow) {
-    description = "Publish all artifacts to repository"
 }
 
 tasks.withType(Upload) {
@@ -105,4 +111,4 @@ tasks.withType(Upload) {
 }
 
 // Configure install task to use the shadow jar/pom
-install.configuration = configurations.shadow
+// install.configuration = configurations.shadow
