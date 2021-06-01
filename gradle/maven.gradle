@@ -9,20 +9,15 @@
  *
  */
 
-apply plugin: 'maven'
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
 if (project.hasProperty("doSigning")) {
     signing {
-        sign jar
         sign sourceJar
         sign javadocJar
     }
     artifacts {
-        signJar.signatures
-        signSourceJar.signatures
-        signJavadocJar.signatures
     }
 
     // Default the secretKeyRingFile to the current user's home
@@ -32,83 +27,87 @@ if (project.hasProperty("doSigning")) {
     }
 }
 
-uploadArchives{
+publishing {
     repositories {
-        mavenDeployer {
-            // Only configure publishing if a URL was provided
-            if (project.hasProperty("publishUrl")) {
-                if (publishUrl == "mavenCentral") {
-                    repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                        authentication(userName: publishUsername, password: publishPassword)
+        // Only configure publishing if a URL was provided
+        if (project.hasProperty("publishUrl")) {
+            if (publishUrl == "mavenCentral") {
+                maven {
+                    credentials {
+                        username = publishUsername
+                        password = publishPassword
                     }
-                    snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                        authentication(userName: publishUsername, password: publishPassword)
+                    if (project.version.endsWith("-SNAPSHOT")) {
+                        url = "https://oss.sonatype.org/content/repositories/snapshots/"
+                    } else {
+                        url = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
                     }
                 }
-                else if (publishUrl == "jcenterSnapshot") {
-                    repository(url: "https://oss.jfrog.org/artifactory/oss-snapshot-local/") {
-                        if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
-                            authentication(userName: publishUsername, password: publishPassword)
+            }
+            else if (publishUrl == "jcenterSnapshot") {
+                maven {
+                    url = "https://oss.jfrog.org/artifactory/oss-snapshot-local/"
+                    if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
+                        credentials {
+                            username = publishUsername
+                            password = publishPassword
                         }
                     }
                 }
-                else {
-                    repository(url: publishUrl) {
-                        // Only configure credentials if they are provided (allows publishing to the filesystem)
-                        if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
-                            authentication(userName: publishUsername, password: publishPassword)
+            }
+            else {
+                maven {
+                    url = publishUrl
+                    // Only configure credentials if they are provided (allows publishing to the filesystem)
+                    if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
+                        credentials {
+                            username = publishUsername
+                            password = publishPassword
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifact sourceJar
+            artifact javadocJar
+            artifact testJar
+
+            pom {
+                name = "Pravega Flink Connectors"
+                url = "http://pravega.io"
+                description = "Streaming Storage Platform"
+                scm {
+                    url = 'https://github.com/pravega/flink-connectors/tree/master'
+                    connection = 'scm:git:git://github.com/pravega/flink-connectors.git'
+                    developerConnection = 'scm:git:https://github.com/pravega/flink-connectors.git'
+                }
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'fpj'
+                        name = 'Flavio Junqueira'
+                    }
+                    developer {
+                        id = 'eronwright'
+                        name = 'Eron Wright'
                     }
                 }
             }
 
-            addFilter('sources') {artifact, file ->
-                artifact.name == 'sources'
-            }
-            addFilter('tests') {artifact, file ->
-                artifact.name == 'tests'
-            }
-            addFilter('javadoc') {artifact, file ->
-                artifact.name == 'javadoc'
+            if (project.hasProperty('doSigning')) {
+                sign publishing.publications.mavenJava
+                // beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
             }
         }
     }
 }
-
-tasks.withType(Upload) {
-    repositories.withType(MavenResolver) {
-        pom.project {
-            name "Pravega Flink Connectors"
-            url "http://pravega.io"
-            description "Streaming Storage Platform"
-            scm {
-                url 'https://github.com/pravega/flink-connectors/tree/master'
-                connection 'scm:git:git://github.com/pravega/flink-connectors.git'
-                developerConnection 'scm:git:https://github.com/pravega/flink-connectors.git'
-            }
-            licenses {
-                license {
-                    name 'The Apache License, Version 2.0'
-                    url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                }
-            }
-            developers {
-                developer {
-                    id 'fpj'
-                    name 'Flavio Junqueira'
-                }
-                developer {
-                    id 'eronwright'
-                    name 'Eron Wright'
-                }
-            }
-        }
-
-        if (project.hasProperty('doSigning')) {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-        }
-    }
-}
-
-// Configure install task to use the shadow jar/pom
-// install.configuration = configurations.shadow
