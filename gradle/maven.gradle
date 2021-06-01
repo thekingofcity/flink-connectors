@@ -72,6 +72,8 @@ publishing {
 
     publications {
         maven(MavenPublication) {
+            artifactId = archivesBaseName
+
             from components.java
             artifact sourceJar
             artifact javadocJar
@@ -110,4 +112,10 @@ publishing {
             }
         }
     }
+}
+
+// disable gradle module metadata file
+// https://docs.gradle.org/current/userguide/publishing_gradle_module_metadata.html#sub:disabling-gmm-publication 
+tasks.withType(GenerateModuleMetadata) {
+    enabled = false
 }
