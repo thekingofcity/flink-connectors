@@ -13,17 +13,12 @@ apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
 if (project.hasProperty("doSigning")) {
-    signing {
-        sign sourceJar
-        sign javadocJar
-    }
-    artifacts {
-    }
-
     // Default the secretKeyRingFile to the current user's home
-    if (!project.property("signing.secretKeyRingFile")) {
-        def secretKeyPath = project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath
-        project.setProperty("signing.secretKeyRingFile", secretKeyPath)
+    def secretKeyPath = project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath
+    project.setProperty("signing.secretKeyRingFile", secretKeyPath)
+
+    signing {
+        sign publishing.publications.mavenJava
     }
 }
 
@@ -71,7 +66,7 @@ publishing {
     }
 
     publications {
-        maven(MavenPublication) {
+        mavenJava(MavenPublication) {
             artifactId = archivesBaseName
 
             from components.java
@@ -104,11 +99,6 @@ publishing {
                         name = 'Eron Wright'
                     }
                 }
-            }
-
-            if (project.hasProperty('doSigning')) {
-                sign publishing.publications.mavenJava
-                // beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
             }
         }
     }
